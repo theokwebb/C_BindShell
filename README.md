@@ -146,7 +146,7 @@ bindshell.c code:
 ```c
 dup2(newsockfd, i)
 ```
-`dup2()` requires a bit of an explanation to why it is called. In a Unix-based OS, there is a `Process Table`, and each process maintains its own separate `File Descriptor Table` (FDT). This FDT is an array of `integers`, and each `integer` (called a `File Descriptor`) serves as a reference (a `pointer`) to an open input/output stream like an open file, a network connection, or a terminal. Index `0`, `1`, and `2` in this array represent standard input (`stdin`), standard output (`stdout`), and standard error (`stderr`), respectively. `stdin` represents the keyboard; `stdout` and `stderr` represent the screen.
+`dup2()` requires a bit of an explanation to why it is called. In a Unix-based OS, there is a `Process Table`, and each process maintains its own separate `File Descriptor Table` (FDT). This FDT is an array of `integers`, and each `integer` (called a `File Descriptor`) serves as a reference (a `pointer`) to an open input/output stream like an open file, a network connection, or a terminal. Index `0`, `1`, and `2` in this array represent standard input (`stdin`), standard output (`stdout`), and standard error (`stderr`), respectively.
 
 Here is an visual of the Process Table and File Descriptor Table:
 
