@@ -76,7 +76,7 @@ portno = atoi(argv[1]);
 ```c
 serv_addr.sin_port = htons(portno);
 ```
-`serv_addr.sin_port = htons(portno);` assigns the port number to the `serv_addr.sin_port` field, and `htons()`[^5] is used to convert the port number from `host byte order` to `network byte order`. This conversion ensures that the port number is represented consistently across different systems, regardless of their byte order.
+`serv_addr.sin_port = htons(portno);` assigns the port number to the `serv_addr.sin_port` field, and `htons()`[^5] is used to convert the port number from `host byte order` to `network byte order` (`ntohs()` does the reverse). This conversion ensures that the port number is represented consistently across different systems, regardless of their byte order.
 
 ---
 
@@ -131,7 +131,7 @@ bindshell.c code:
 ```c
 newsockfd = accept(sockfd, NULL, NULL);
 ```
-This system calls accepts the pending connection in the queue, which is only `1` here, and returns a new socket file descriptor to use for this single connection, which is assigned to `newsockft`. 
+This system call accepts the pending connection in the queue, which is only `1` here, and returns a new socket file descriptor to use for this single connection, which is assigned to `newsockfd`. 
 This means there are now two socket file descriptors; the original one is listening for any new connections (which go into the queue), and the new one for communication with the client. 
 It isn’t necessary to know client's address information here, so the second and third arguments can be set to `NULL`. 
 
@@ -165,7 +165,11 @@ Here is an visual of the Process Table and File Descriptor Table:
 | type  | stdin | stdout| stderr| file  | socket| ...   | ...   |
 | ...   | ...   | ...   | ...   | ...   | ...   | ...   | ...   |
 
-So, when `accept()` is called in `bindshell.c`, it returns a new file descriptor (named `newsockfd`) if a client connects to the server. This `newsockfd` represents a communication channel with the client. However, `newsockfd` does not inherit `stdin`, `stdout`, and `stderr` from the parent process (`bindshell.c`). Therefore, to enable communication through the terminal, we need to redirect these I/O streams to the client connection (using `dup2()`). This redirection allows the parent process to interact with the client using the standard I/O streams as if it were communicating through the terminal.
+So, when `accept()` is called in `bindshell.c`, it returns a new file descriptor (named `newsockfd`) if a client connects to the server. This `newsockfd` represents a communication channel with the client. However, to enable communication through the terminal, we need to redirect the standard I/O streams (`stdin`, `stdout`, and `stderr`) to the clients connection (`newsockfd`) using the system call `dup2()`. This redirection allows the process to interact with the client using the standard I/O streams as if it were communicating through the terminal.
+
+This can be visualised like so:
+
+![dup2](https://github.com/theokwebb/C_BindShell/blob/8606f33c778e71e60e2762f572da95c1d592ff1c/dup2.jpg)
 
 `dup2()` simply takes a file descriptor (`newsockft`) and copies it into another file descriptor (`stdin`, `stdout`, and `stderr`).
 
@@ -198,6 +202,40 @@ execve("/bin/sh", args, NULL)
 
 See `bindshellex.c` for an extended version of the bind shell with greater usability. 
 
+---
+
+## Update (19/08/2023)
+
+I recently showed my code to a [friend](https://github.com/b10s) who pointed out a really cool (unintentional) feature of my code:
+
+He asked me to consider what would happen if you run the program like so: `./bindshell hi` 
+
+You may think that `atoi` will return `0` as it can't parse a number from the string `“hi”`, and thus fail. That’s partly correct; `atoi` will return `0`. However, it will actually attempt to `listen()` on port number `0`, and on Unix systems when you bind a socket to port number `0`, the OS will automatically assign a random free port number, so the program will actually run. 
+
+Here’s the Unix logic:
+https://github.com/torvalds/linux/blob/master/net/ipv4/inet_connection_sock.c#L503
+
+You can test this for yourself by running `./bindshell hi` and then `sudo lsof -i -n | grep LISTEN` to see which port is open.
+
+Or you can replace lines 44 and 45:
+```c
+printf("%s : listening for incoming connections "
+    "on all interfaces, port %d.\n", argv[0], portno);
+```
+with:
+```c
+socklen_t addr_len = sizeof(serv_addr);
+    getsockname(sockfd, (struct sockaddr *) &serv_addr, &addr_len);
+    printf("%s : listening for incoming connections "
+    "on all interfaces, port %d.\n", argv[0], ntohs(serv_addr.sin_port));
+```
+This new block of code will show the port that was randomly assigned. Unfortunately, without it, it will just print:
+`./bindshell : listening for incoming connections on all interfaces, port 0.`
+
+This is because after the `bind()`[^12] call, the socket `sockfd` is populated with the IP address and port number based on the `serv_addr` values. `serv_addr.sin_port`’s value is `0`, so `printf` prints `port 0`. However, `getsockname()`[^13] retrieves the current address to which the socket (`sockfd`) is bound (including the port number) and stores this in `serv_addr`. Thus, it gets the correct information from the system and prints the randomly assigned port.
+
+Credit goes to [0xtriboulet](https://twitter.com/0xTriboulet) and [b10s](https://github.com/b10s) for helping me to understand this.
+
 ### References:
 [^1]: https://beej.us/guide/bgnet/html//index.html#sendrecv
 [^2]: https://manual.cs50.io/7/socket
@@ -210,3 +248,5 @@ See `bindshellex.c` for an extended version of the bind shell with greater usabi
 [^9]: https://manual.cs50.io/2/dup2
 [^10]: https://manual.cs50.io/2/close
 [^11]: https://manual.cs50.io/2/execve
+[^12]: https://man7.org/linux/man-pages/man2/bind.2.html
+[^13]: https://man7.org/linux/man-pages/man3/getsockname.3p.html
