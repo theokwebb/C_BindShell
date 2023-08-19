@@ -40,8 +40,9 @@ int main(int argc, char *argv[])
     }
 
     listen(sockfd, 0);
+    
     printf("%s : listening for incoming connections "
-    "on all interfaces, port %d.\n", argv[0], portno);
+    "on all interfaces, port %d.\n", argv[0], ntohs(serv_addr.sin_port));
 
     newsockfd = accept(sockfd, NULL, NULL);
     if (newsockfd < 0)
