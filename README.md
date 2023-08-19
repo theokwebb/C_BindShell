@@ -206,7 +206,7 @@ See `bindshellex.c` for an extended version of the bind shell with greater usabi
 
 ## Update (19/08/2023)
 
-I recently showed my code to a [friend](https://github.com/b10s) who pointed out a really cool (unintentional) feature of my code:
+I recently showed my code to a [friend](https://github.com/b10s) who pointed out a really cool (unintentional) feature of the code:
 
 He asked me to consider what would happen if you run the program like so: `./bindshell hi` 
 
