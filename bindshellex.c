@@ -46,8 +46,9 @@ int main(int argc, char *argv[])
 
 	// Listen for incoming connections
 	listen(sockfd,0);
+
 	printf("%s : listening for incoming connections "
-	"on all interfaces, port %d.\n", argv[0], portno);
+    "on all interfaces, port %d.\n", argv[0], ntohs(serv_addr.sin_port));
 
 	// Accept connection
 	clilen = sizeof(cli_addr);
@@ -62,6 +63,11 @@ int main(int argc, char *argv[])
 	if (inet_ntop(AF_INET, &(cli_addr.sin_addr), cli_ip, INET_ADDRSTRLEN) == NULL)
 	{
 		error("ERROR converting client IP");
+	}
+	// Get client's address
+    if (getsockname(newsockfd, (struct sockaddr *) &cli_addr, &clilen) < 0)
+	{
+		error("ERROR getting client address");
 	}
 	int cli_port = ntohs(cli_addr.sin_port);
 	// Print connection details from client
